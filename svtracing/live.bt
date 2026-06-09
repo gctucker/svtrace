@@ -32,6 +32,12 @@ BEGIN
   @sv_dropped = (uint64)0; // Counter for dropped packets
   @start = 1;
   @stream_id_offset = 33;
+  @debug_total = 0;
+  @debug_proto = 0;
+  @debug_stream = 0;
+  @debug_skb = 0;
+  @debug_skb_proto = 0;
+  @debug_skb_pid = 0;
 }
 
 kprobe:tpacket_rcv
@@ -39,7 +45,10 @@ kprobe:tpacket_rcv
   $skb = (struct sk_buff*)arg0;
   $protocol = $skb->protocol;
 
+  @debug_total += 1;
+
   if ($protocol == @sv_ether_proto) {
+    @debug_proto += 1;
     $data_sv_counter = $skb->head + $skb->mac_header + @sv_counter_offset;
     $data_stream_id = $skb->head + $skb->mac_header + @stream_id_offset;
 
@@ -55,13 +64,14 @@ kprobe:tpacket_rcv
     }
     // First SV counter must start on the first SV we captured to avoid
     // a false detection of SV drops
-    if(@start == 1){
+    if (@start == 1){
       @old_sv_counter_skb_push = $sv_counter;
       @old_sv_counter_consume_skb = $sv_counter;
       @start = 0;
     }
 
     if ($stream_id == @stream_target) {
+      @debug_stream += 1;
       @t1[$sv_counter, @sv_iteration_skb_push] = nsecs(tai);
 
       // Check for SV drops
@@ -83,6 +93,18 @@ kprobe:consume_skb
 {
   $skb = (struct sk_buff*)arg0;
   $protocol = $skb->protocol;
+
+  if ($protocol == @sv_ether_proto) {
+    @debug_skb_proto += 1;
+  } else if ($protocol != 0) {
+    printf("PROTO %d %d\n", @sv_ether_proto, $protocol);
+  }
+
+  if (pid == @sv_proceed_pid) {
+    @debug_skb_pid += 1;
+  }
+
+  @debug_skb += 1;
 
   if ($protocol == @sv_ether_proto && pid == @sv_proceed_pid) {
     $data_sv_counter = $skb->head + $skb->mac_header + @sv_counter_offset;
@@ -132,15 +154,21 @@ kprobe:consume_skb
   }
 }
 
-interval:s:1
+interval:s:5
 {
-    system("clear");
+    /*system("clear");*/
     print(@latency);
     printf("\033[1m\033[97m");
+    printf("DEBUG total:      %d\n", @debug_total);
+    printf("DEBUG proto:      %d\n", @debug_proto);
+    printf("DEBUG stream:     %d\n", @debug_stream);
+    printf("DEBUG skb:        %d\n", @debug_skb);
+    printf("DEBUG skb proto:  %d\n", @debug_skb_proto);
+    printf("DEBUG skb pid:    %d\n", @debug_skb_pid);
     printf("SV received: %d\n", @sv_count);
     printf("SV missed: %d\n", @sv_missed);
     printf("SV dropped: %d\n", @sv_dropped);
-    printf("SV buffer fill: %d%\n", (len(@t1) / 100000) * 100);
+    printf("SV buffer fill: %d%\n", ((uint64)len(@t1) / 100000) * 100);
 
     if ((uint64)@count_latency) {
         printf("Min Latency: %d us\n", (uint64)@min_latency);
