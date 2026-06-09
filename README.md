@@ -115,3 +115,65 @@ Note: By default:
 
 * Live measurement in terminal
 * Record measurement in a file
+
+
+
+```
+2026-06-09 12:41:22,487 - LiveCapture - DEBUG - Creating Dumpcap subprocess with parameters: /usr/bin/dumpcap -q -i br0 -w -
+2026-06-09 12:41:22,488 - LiveCapture - DEBUG - Dumpcap subprocess (pid 81648) created
+2026-06-09 12:41:22,699 - LiveCapture - DEBUG - Creating TShark subprocess with parameters: /usr/bin/tshark -l -n -T pdml -c 1 -i -
+2026-06-09 12:41:22,699 - LiveCapture - DEBUG - Executable: /usr/bin/tshark
+2026-06-09 12:41:22,699 - LiveCapture - DEBUG - Capturing on 'br0'
+2026-06-09 12:41:22,699 - LiveCapture - DEBUG - dumpcap: You do not have permission to capture on device "br0".
+2026-06-09 12:41:22,699 - LiveCapture - DEBUG - (socket: Operation not permitted)
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG - Please check to make sure you have sufficient permissions.
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG -
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG - On Debian and Debian derivatives such as Ubuntu, if you have installed Wireshark from a package, try running
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG -
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG - sudo dpkg-reconfigure wireshark-common
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG -
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG - selecting "<Yes>" in response to the question
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG -
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG - Should non-superusers be able to capture packets?
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG -
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG - adding yourself to the "wireshark" group by running
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG -
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG - sudo usermod -a -G wireshark {your username}
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG -
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG - and then logging out and logging back in again.
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG -
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG - If you did not install Wireshark from a package, ensure that Dumpcap has the needed CAP_NET_RAW and CAP_NET_ADMIN capabilities by running
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG -
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG - sudo setcap cap_net_raw,cap_net_admin=ep {path/to/}dumpcap
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG -
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG - and then restarting Wireshark.
+2026-06-09 12:41:22,700 - LiveCapture - DEBUG - TShark subprocess (pid 81677) created
+2026-06-09 12:41:22,701 - LiveCapture - DEBUG - Starting to go through packets
+2026-06-09 12:41:22,889 - LiveCapture - DEBUG - Capturing on 'Standard input'
+```
+
+```
+Detected SV stream: svID0000
+Fatal: Required PID process enp7s0 not found
+```
+
+```
+/home/gtucker/project/energy/seapath/svtrace/svtracing/live.bt:150:47-48: WARNING: signed operands for '/' can lead to undefined behavior (cast to unsigned to silence warning)
+    printf("SV buffer fill: %d%\n", (len(@t1) / 100000) * 100);
+```
+
+```
+DEBUG total:      106907
+DEBUG proto:      96000
+DEBUG stream:     12000
+DEBUG skb:        62559
+DEBUG skb proto:  0
+DEBUG skb pid:    0
+SV received: 0
+SV missed: 0
+SV dropped: 0
+SV buffer fill: 0%
+No SV collected.
+PROTO 47752 56710
+PROTO 47752 56710
+```
