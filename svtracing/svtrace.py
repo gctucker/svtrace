@@ -11,6 +11,8 @@ import configparser
 import importlib.resources as pkg_resources
 import svtracing
 import os
+import sys
+
 
 def live():
     process = run_command("live")
@@ -81,17 +83,18 @@ def run_command(command):
         vhost_pid = get_pid("vhost")
         bpftrace_cmd = [
             'chrt', '-f', '1', 'bpftrace', '--unsafe', str(bpf_script_path),
-            str(len(sv_id)), str(sum_sv_id), str(sv_counter.pos), 
+            str(len(sv_id)), str(sum_sv_id), str(sv_counter.pos),
             str(sv_irq_pid), str(vhost_pid)
         ]
 
-    elif args.machine == 'VM':
+    elif args.machine.lower() == 'vm':
         virtio_input_pid = extract_virtio_pid()
         bpftrace_cmd = [
             'chrt', '-f', '1', 'bpftrace', '--unsafe', str(bpf_script_path),
-            str(len(sv_id)), str(sum_sv_id), str(sv_counter.pos), 
+            str(len(sv_id)), str(sum_sv_id), str(sv_counter.pos),
             str(virtio_input_pid), str(virtio_input_pid)
         ]
+        print(' '.join(bpftrace_cmd))
 
     process = subprocess.Popen(
         bpftrace_cmd,
@@ -124,7 +127,7 @@ def extract_virtio_pid():
 # To bypass this, we need, from the interface name, to make the correlation
 # between it and the process name.
 
-    if args.machine == 'VM':
+    if args.machine.lower() == 'vm':
         # Grab the SV interface PCI bus
         ethtool_cmd = f"ethtool -i {sv_interface}|grep \"bus-info\"| awk '{{print $2}}'"
         try:
@@ -206,17 +209,27 @@ if __name__ == "__main__":
 
     group.add_argument("--live",action='store_true', help="Show live latency distribution. Default program behavior.")
     group.add_argument("--record",action='store_true', help="Record latency in file results")
-    parser.add_argument("--machine", required=True, choices=["hypervisor", "VM"], help="Type of machine svtrace is being executed (hypervisor/VM)")
+    parser.add_argument("--machine", required=True, choices=["hypervisor", "VM", "vm"], help="Type of machine svtrace is being executed (hypervisor/VM)")
 
     parser.add_argument("--conf", required=True, help="Path to svtrace.cfg configuration file")
     parser.add_argument("--out", default="/tmp/", help="Output results file for --record option")
 
     args = parser.parse_args()
 
+    if not os.path.isfile(args.conf):
+        print(f"Warning: config file not found: {args.conf}")
+
     config = configparser.ConfigParser()
     config.read(args.conf)
-    sv_interface = config.get('DEFAULT','SV_INTERFACE')
-    sv_buffer_size = config.get('DEFAULT','SV_BUFFER_SIZE')
+    try:
+        sv_interface = config.get('DEFAULT','SV_INTERFACE')
+        sv_buffer_size = config.get('DEFAULT','SV_BUFFER_SIZE')
+    except configparser.NoOptionError as ex:
+        print(f"Configuration error: {ex}")
+        sys.exit(1)
+
+    print(f"Interface: {sv_interface}")
+    print(f"Buffer:    {sv_buffer_size}")
 
     if args.record:
         record()
