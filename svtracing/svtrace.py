@@ -19,11 +19,13 @@ def live():
 
     try:
         while True:
-            output = process.stdout.readline()
-            if output == '' and process.poll() is not None:
-                break
+            output = process.stdout.readline().strip()
             if output:
-                print(output.strip())
+                print(output)
+            # if output == '' and process.poll() is not None:
+            #     break
+            # if output:
+            #     print(output.strip())
 
         stderr_output = process.stderr.read()
         if stderr_output:
@@ -43,10 +45,15 @@ def record():
     try:
         print("Start recording. Hit CTRL + C to stop")
         while True:
-            line = process.stdout.readline()
-            output.append(line.strip())
-            if not line and process.poll() is not None:
-                break
+            line = process.stdout.readline().strip()
+            if line:
+                output.append(line)
+            else:
+                output.append('.')
+
+            # output.append(line.strip())
+            # if not line and process.poll() is not None:
+            #     break
 
         stderr_output = process.stderr.read()
         if stderr_output:
@@ -89,6 +96,7 @@ def run_command(command):
 
     elif args.machine.lower() == 'vm':
         virtio_input_pid = extract_virtio_pid()
+        print("PID", virtio_input_pid)
         bpftrace_cmd = [
             'chrt', '-f', '1', 'bpftrace', '--unsafe', str(bpf_script_path),
             str(len(sv_id)), str(sum_sv_id), str(sv_counter.pos),
