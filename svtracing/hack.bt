@@ -1,0 +1,86 @@
+#!/usr/bin/env bpftrace
+
+/*
+Copyright (C) 2024, RTE (http://www.rte-france.com)
+Copyright (C) 2024 Savoir-faire Linux, Inc.
+SPDX-License-Identifier: Apache-2.0
+*/
+
+/*
+  Positional arguments:
+  $1: SV ID string length
+  $2: SV ID reference target
+  $3: SV counter offset
+
+  sudo bpftrace --unsafe hack.bt 15 1323 50
+*/
+
+BEGIN
+{
+  @sv_ether_proto = (uint64)47752;
+  @old_sv_counter_skb_push = (uint64)0;
+  @old_sv_counter_consume_skb = (uint64)0;
+  @len_sv_id = $1;
+  @stream_target = (uint64)$2;
+  @sv_counter_offset = (uint64)$3;
+
+  @sv_iteration_skb_push = 0;
+  @sv_iteration_consume_skb = 0;
+  @sv_count = 0;
+  @sv_dropped = (uint64)0; // Counter for dropped packets
+  @start = 1;
+  @stream_id_offset = 33;
+}
+
+kprobe:tpacket_rcv
+{
+  $skb = (struct sk_buff*)arg0;
+  $protocol = $skb->protocol;
+
+  if ($protocol == @sv_ether_proto) {
+    $data_sv_counter = $skb->head + $skb->mac_header + @sv_counter_offset;
+    $data_stream_id = $skb->head + $skb->mac_header + @stream_id_offset;
+
+    $sv_counter = (uint64)0;
+    unroll(2) {
+      $sv_counter = ($sv_counter << 8) + *(uint8*)$data_sv_counter;
+      $data_sv_counter += 1;
+    }
+    $stream_id = (uint64)0;
+    unroll($1) {
+      $stream_id = $stream_id + *(uint8*)$data_stream_id;
+      $data_stream_id += 1;
+    }
+
+    // First SV counter must start on the first SV we captured to avoid
+    // a false detection of SV drops
+    if (@start == 1){
+      @old_sv_counter_skb_push = $sv_counter;
+      @old_sv_counter_consume_skb = $sv_counter;
+      @start = 0;
+    }
+
+    if ($stream_id == @stream_target) {
+      @sv_count += 1;
+
+      // Check for SV drops
+      if ($sv_counter > @old_sv_counter_skb_push + 1) {
+        @sv_dropped += $sv_counter - @old_sv_counter_skb_push - 1;
+      }
+
+      if ($sv_counter != @old_sv_counter_skb_push) {
+        if ($sv_counter < @old_sv_counter_skb_push) {
+          @sv_iteration_skb_push += 1;
+        }
+        @old_sv_counter_skb_push = $sv_counter;
+      }
+    }
+  }
+}
+
+interval:s:1
+{
+    printf("--------------------------------------------------\n");
+    printf("SV received: %d\n", @sv_count);
+    printf("SV dropped: %d\n", @sv_dropped);
+}
